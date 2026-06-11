@@ -13,14 +13,14 @@ class ModelClient(Protocol):
 class ModelConfig:
     api_key: str | None = None
     model: str = "gpt-5.5"
-    base_url: str | None = None
+    base_url: str = "https://api.openai.com/v1"
 
     @classmethod
     def from_env(cls) -> "ModelConfig":
         return cls(
             api_key=os.environ.get("OPENAI_API_KEY") or None,
             model=os.environ.get("OPENAI_MODEL") or "gpt-5.5",
-            base_url=os.environ.get("OPENAI_BASE_URL") or None,
+            base_url=os.environ.get("OPENAI_BASE_URL") or "https://api.openai.com/v1",
         )
 
     @property
@@ -45,19 +45,23 @@ class OpenAIModelClient:
             return None
 
         client = self._openai_client or self._build_client()
-        response = client.responses.create(
-            model=self.config.model,
-            instructions=self.SYSTEM_INSTRUCTIONS,
-            input=self._build_input(message, tool_name, tool_result),
-        )
-        return str(response.output_text).strip()
+        try:
+            response = client.responses.create(
+                model=self.config.model,
+                instructions=self.SYSTEM_INSTRUCTIONS,
+                input=self._build_input(message, tool_name, tool_result),
+            )
+        except Exception:
+            return None
+        return str(response.output_text).strip() or None
 
     def _build_client(self) -> Any:
         from openai import OpenAI
 
-        kwargs: dict[str, str] = {"api_key": self.config.api_key or ""}
-        if self.config.base_url:
-            kwargs["base_url"] = self.config.base_url
+        kwargs: dict[str, str] = {
+            "api_key": self.config.api_key or "",
+            "base_url": self.config.base_url,
+        }
         return OpenAI(**kwargs)
 
     def _build_input(self, message: str, tool_name: str, tool_result: dict[str, Any]) -> str:

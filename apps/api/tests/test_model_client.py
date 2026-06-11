@@ -34,6 +34,15 @@ def test_model_config_reads_openai_environment(monkeypatch) -> None:
     assert config.is_configured
 
 
+def test_model_config_uses_default_base_url_when_env_is_blank(monkeypatch) -> None:
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+    monkeypatch.setenv("OPENAI_BASE_URL", "")
+
+    config = ModelConfig.from_env()
+
+    assert config.base_url == "https://api.openai.com/v1"
+
+
 def test_model_client_uses_responses_api_with_tool_context() -> None:
     fake_openai = FakeOpenAI()
     config = ModelConfig(api_key="sk-test", model="gpt-5.5")
@@ -71,6 +80,26 @@ def test_model_client_reports_missing_configuration(monkeypatch) -> None:
     client = OpenAIModelClient(config=config, openai_client=None)
 
     assert not config.is_configured
+    assert client.generate(
+        message="list topics",
+        tool_name="list_topics",
+        tool_result={"topics": ["APU"]},
+    ) is None
+
+
+def test_model_client_returns_none_when_provider_call_fails() -> None:
+    class FailingResponses:
+        def create(self, **kwargs):
+            raise RuntimeError("provider failed")
+
+    class FailingOpenAI:
+        responses = FailingResponses()
+
+    client = OpenAIModelClient(
+        config=ModelConfig(api_key="sk-test", model="gpt-5.5"),
+        openai_client=FailingOpenAI(),
+    )
+
     assert client.generate(
         message="list topics",
         tool_name="list_topics",

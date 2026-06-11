@@ -213,7 +213,13 @@ def test_agent_runtime_falls_back_when_model_is_not_configured(tmp_path: Path) -
 
 
 def test_agent_stream_endpoint_returns_sse_events(tmp_path: Path) -> None:
-    client = TestClient(create_app(notebook_root=create_notebook(tmp_path)))
+    client = TestClient(
+        create_app(
+            notebook_root=create_notebook(tmp_path),
+            model_client=CapturingModelClient(None),
+            load_env=False,
+        )
+    )
 
     with client.stream(
         "POST",
@@ -235,7 +241,13 @@ def test_agent_stream_endpoint_returns_sse_events(tmp_path: Path) -> None:
 
 
 def test_image_endpoints_return_notebook_svg_and_unknown_images_404(tmp_path: Path) -> None:
-    client = TestClient(create_app(notebook_root=create_notebook(tmp_path)))
+    client = TestClient(
+        create_app(
+            notebook_root=create_notebook(tmp_path),
+            model_client=CapturingModelClient(None),
+            load_env=False,
+        )
+    )
 
     image_response = client.get("/api/images/apu_generator")
     thumb_response = client.get("/api/images/apu_generator/thumbnail")

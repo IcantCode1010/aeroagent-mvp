@@ -6,18 +6,24 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, StreamingResponse
 
 from app.agent.events import format_sse
+from app.agent.model_client import ModelClient
 from app.agent.notebook_repository import NotebookRepository
 from app.agent.runtime import AgentRuntime
 from app.agent.tool_registry import build_default_registry
 from app.schemas import AgentStreamRequest, HealthResponse
 
 
-def create_app(notebook_root: str | None = None) -> FastAPI:
-    load_dotenv()
+def create_app(
+    notebook_root: str | None = None,
+    model_client: ModelClient | None = None,
+    load_env: bool = True,
+) -> FastAPI:
+    if load_env:
+        load_dotenv()
 
     app = FastAPI(title="AeroAgent API", version="0.1.0")
     repository = NotebookRepository(notebook_root)
-    runtime = AgentRuntime(registry=build_default_registry(str(repository.root)))
+    runtime = AgentRuntime(registry=build_default_registry(str(repository.root)), model_client=model_client)
 
     app.add_middleware(
         CORSMiddleware,
