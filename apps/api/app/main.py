@@ -1,5 +1,6 @@
 from collections.abc import Iterator
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, StreamingResponse
@@ -12,6 +13,8 @@ from app.schemas import AgentStreamRequest, HealthResponse
 
 
 def create_app(notebook_root: str | None = None) -> FastAPI:
+    load_dotenv()
+
     app = FastAPI(title="AeroAgent API", version="0.1.0")
     repository = NotebookRepository(notebook_root)
     runtime = AgentRuntime(registry=build_default_registry(str(repository.root)))

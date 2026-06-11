@@ -14,6 +14,12 @@ from app.agent.tool_registry import ToolRegistry, build_default_registry
 from app.main import create_app
 
 
+@pytest.fixture(autouse=True)
+def clear_live_model_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("OPENAI_BASE_URL", raising=False)
+
+
 def create_notebook(root: Path) -> Path:
     notebook_root = root / "notebooks"
     apu = notebook_root / "aircraft-systems" / "topics" / "apu"
@@ -98,6 +104,16 @@ def collect_events(lines: list[str]) -> list[tuple[str, dict]]:
     return events
 
 
+class CapturingModelClient:
+    def __init__(self, text: str | None) -> None:
+        self.text = text
+        self.calls: list[dict] = []
+
+    def generate(self, message: str, tool_name: str, tool_result: dict) -> str | None:
+        self.calls.append({"message": message, "tool_name": tool_name, "tool_result": tool_result})
+        return self.text
+
+
 @pytest.mark.parametrize(
     ("message", "tool_name"),
     [
@@ -166,6 +182,34 @@ def test_agent_runtime_streams_typed_image_events(tmp_path: Path) -> None:
         "payload": {"imageId": "apu_generator"},
     }
     assert "I found 2 image references" in events[6]["data"]["text"]
+
+
+def test_agent_runtime_uses_configured_model_for_final_text(tmp_path: Path) -> None:
+    model_client = CapturingModelClient("AI model answer from notebook context.")
+    runtime = AgentRuntime(
+        registry=build_default_registry(create_notebook(tmp_path)),
+        planner=Planner(),
+        model_client=model_client,
+    )
+
+    events = list(runtime.stream("what does the apu starter generator do", session_id="demo"))
+
+    assert events[3] == {"event": "agent_token", "data": {"text": "AI model answer from notebook context."}}
+    assert model_client.calls[0]["tool_name"] == "search_markdown"
+    assert "starter generator supplies electrical power" in model_client.calls[0]["tool_result"]["answer"]
+
+
+def test_agent_runtime_falls_back_when_model_is_not_configured(tmp_path: Path) -> None:
+    model_client = CapturingModelClient(None)
+    runtime = AgentRuntime(
+        registry=build_default_registry(create_notebook(tmp_path)),
+        planner=Planner(),
+        model_client=model_client,
+    )
+
+    events = list(runtime.stream("what does the apu starter generator do", session_id="demo"))
+
+    assert "starter generator supplies electrical power" in events[3]["data"]["text"]
 
 
 def test_agent_stream_endpoint_returns_sse_events(tmp_path: Path) -> None:

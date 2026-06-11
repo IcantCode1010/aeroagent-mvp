@@ -18,6 +18,16 @@ flowchart LR
 
 ## How To Run
 
+Create or update `.env`:
+
+```bash
+OPENAI_API_KEY=your_api_key_here
+OPENAI_MODEL=gpt-5.5
+OPENAI_BASE_URL=
+AEROAGENT_NOTEBOOK_ROOT=
+NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+```
+
 ```bash
 docker compose up --build
 ```
@@ -39,6 +49,7 @@ curl -N -X POST http://localhost:8000/api/agent/stream \
 - FastAPI endpoints for health, typed agent streaming, images, and thumbnails.
 - Custom Python `AgentRuntime`, `Planner`, and read-only `ToolRegistry`.
 - File-backed tools: `list_topics`, `search_markdown`, and `search_images`.
+- OpenAI Responses API model integration configured through `.env`.
 - Next.js three-pane UI with topic placeholder, source viewer, streaming chat, and image cards.
 - Docker Compose services for `api` on port `8000` and `web` on port `3000`.
 
