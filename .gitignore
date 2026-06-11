@@ -1,0 +1,9 @@
+node_modules/
+.next/
+.pytest_cache/
+__pycache__/
+*.pyc
+coverage/
+.env
+.env.local
+npm-debug.log*
