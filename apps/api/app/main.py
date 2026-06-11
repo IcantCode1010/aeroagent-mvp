@@ -5,14 +5,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, StreamingResponse
 
 from app.agent.events import format_sse
+from app.agent.notebook_repository import NotebookRepository
 from app.agent.runtime import AgentRuntime
-from app.agent.tools.mock_images import get_svg_image, get_svg_thumbnail
+from app.agent.tool_registry import build_default_registry
 from app.schemas import AgentStreamRequest, HealthResponse
 
 
-def create_app() -> FastAPI:
+def create_app(notebook_root: str | None = None) -> FastAPI:
     app = FastAPI(title="AeroAgent API", version="0.1.0")
-    runtime = AgentRuntime()
+    repository = NotebookRepository(notebook_root)
+    runtime = AgentRuntime(registry=build_default_registry(str(repository.root)))
 
     app.add_middleware(
         CORSMiddleware,
@@ -36,17 +38,17 @@ def create_app() -> FastAPI:
 
     @app.get("/api/images/{image_id}")
     def image(image_id: str) -> Response:
-        svg = get_svg_image(image_id)
-        if svg is None:
+        image_content = repository.get_image_content(image_id)
+        if image_content is None:
             raise HTTPException(status_code=404, detail="Image not found")
-        return Response(content=svg, media_type="image/svg+xml")
+        return Response(content=image_content.content, media_type=image_content.media_type)
 
     @app.get("/api/images/{image_id}/thumbnail")
     def image_thumbnail(image_id: str) -> Response:
-        svg = get_svg_thumbnail(image_id)
-        if svg is None:
+        image_content = repository.get_image_content(image_id, thumbnail=True)
+        if image_content is None:
             raise HTTPException(status_code=404, detail="Image not found")
-        return Response(content=svg, media_type="image/svg+xml")
+        return Response(content=image_content.content, media_type=image_content.media_type)
 
     return app
 

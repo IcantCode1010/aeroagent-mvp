@@ -1,6 +1,6 @@
 # AeroAgent MVP
 
-AeroAgent is a bare-bones proof of concept for a notebook-connected aviation agent. This first version proves the agent shell: typed streaming responses, multimodal image cards, a center source viewer, and a read-only plug-and-play tool registry backed by mock data.
+AeroAgent is a bare-bones proof of concept for a notebook-connected aviation agent. This first version proves the agent shell: typed streaming responses, multimodal image cards, a center source viewer, and a read-only plug-and-play tool registry backed by filesystem notebook data.
 
 ## Architecture
 
@@ -38,7 +38,7 @@ curl -N -X POST http://localhost:8000/api/agent/stream \
 
 - FastAPI endpoints for health, typed agent streaming, images, and thumbnails.
 - Custom Python `AgentRuntime`, `Planner`, and read-only `ToolRegistry`.
-- Mock tools: `list_topics`, `search_markdown`, and `search_images`.
+- File-backed tools: `list_topics`, `search_markdown`, and `search_images`.
 - Next.js three-pane UI with topic placeholder, source viewer, streaming chat, and image cards.
 - Docker Compose services for `api` on port `8000` and `web` on port `3000`.
 
@@ -46,7 +46,7 @@ curl -N -X POST http://localhost:8000/api/agent/stream \
 
 - Real auth, database, vector DB, object storage, OCR, indexing, or LLM provider.
 - Agent file writes, uploads, terminal commands, or indexing actions.
-- Binary image assets; SVG images are generated in memory by the API.
+- Binary image assets; the included sample notebook uses SVG source files.
 
 ## Local Checks
 
@@ -57,4 +57,4 @@ cd apps/web && npm test && npm run build
 
 ## Next Step
 
-Replace the mock tools with a read-only filesystem notebook adapter for Markdown files and image metadata under `/data/notebooks`.
+Point `AEROAGENT_NOTEBOOK_ROOT` at a maintained notebook corpus and expand the read-only adapter for richer metadata.

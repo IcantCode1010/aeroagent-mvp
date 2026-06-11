@@ -28,10 +28,10 @@ describe("parseSseBuffer", () => {
   });
 
   it("parses a done event after a Windows newline delimiter", () => {
-    const result = parseSseBuffer('event: done\r\ndata: {"messageId":"mock-msg-1"}\r\n\r\n');
+    const result = parseSseBuffer('event: done\r\ndata: {"messageId":"demo-msg-1"}\r\n\r\n');
 
     expect(result).toEqual({
-      events: [{ event: "done", data: { messageId: "mock-msg-1" } }],
+      events: [{ event: "done", data: { messageId: "demo-msg-1" } }],
       remaining: "",
     });
   });

@@ -1,0 +1,6 @@
+id: apu_bleed_air
+title: APU Bleed Air Schematic
+caption: APU bleed air source schematic from the notebook.
+file: apu_bleed_air.svg
+thumbnail: apu_bleed_air_thumb.svg
+order: 2

@@ -30,11 +30,11 @@ class AgentRuntime:
                 yield make_event("image_result", image)
             if images:
                 yield make_event("ui_action", {"type": "open_image", "payload": {"imageId": images[0]["imageId"]}})
-            yield make_event("agent_token", {"text": f"I found {len(images)} mock image references for this notebook."})
+            yield make_event("agent_token", {"text": f"I found {len(images)} image references for this notebook."})
         elif plan.tool_name == "list_topics":
             topics = result["topics"]
-            yield make_event("agent_token", {"text": f"Available mock topics: {', '.join(topics)}."})
+            yield make_event("agent_token", {"text": f"Available topics: {', '.join(topics)}."})
         else:
             yield make_event("agent_token", {"text": result["answer"]})
 
-        yield make_event("done", {"messageId": "mock-msg-1"})
+        yield make_event("done", {"messageId": f"{session_id}-msg-1"})

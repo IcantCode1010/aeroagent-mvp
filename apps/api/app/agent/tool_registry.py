@@ -1,8 +1,8 @@
 from typing import Any
 
+from app.agent.notebook_repository import NotebookRepository
 from app.agent.tools.base import BaseTool, ToolContext, ToolDefinition
-from app.agent.tools.mock_images import SearchImagesTool
-from app.agent.tools.mock_notebook import ListTopicsTool, SearchMarkdownTool
+from app.agent.tools.notebook import ListTopicsTool, SearchImagesTool, SearchMarkdownTool
 
 
 class ToolRegistry:
@@ -24,9 +24,10 @@ class ToolRegistry:
         return tool.run(input_data, ToolContext(session_id=session_id))
 
 
-def build_default_registry() -> ToolRegistry:
+def build_default_registry(notebook_root: str | None = None) -> ToolRegistry:
+    repository = NotebookRepository(notebook_root)
     registry = ToolRegistry()
-    registry.register(ListTopicsTool())
-    registry.register(SearchMarkdownTool())
-    registry.register(SearchImagesTool())
+    registry.register(ListTopicsTool(repository))
+    registry.register(SearchMarkdownTool(repository))
+    registry.register(SearchImagesTool(repository))
     return registry

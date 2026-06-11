@@ -14,6 +14,76 @@ from app.agent.tool_registry import ToolRegistry, build_default_registry
 from app.main import create_app
 
 
+def create_notebook(root: Path) -> Path:
+    notebook_root = root / "notebooks"
+    apu = notebook_root / "aircraft-systems" / "topics" / "apu"
+    hydraulics = notebook_root / "aircraft-systems" / "topics" / "hydraulics"
+    electrical = notebook_root / "aircraft-systems" / "topics" / "electrical"
+    images = apu / "images"
+
+    images.mkdir(parents=True)
+    hydraulics.mkdir(parents=True)
+    electrical.mkdir(parents=True)
+
+    (notebook_root / "aircraft-systems" / "notebook.yaml").write_text(
+        "title: Aircraft Systems\n"
+        "topics:\n"
+        "  - apu\n"
+        "  - hydraulics\n"
+        "  - electrical\n",
+        encoding="utf-8",
+    )
+    (apu / "topic.yaml").write_text(
+        "title: APU\nsummary: Auxiliary power unit procedures.\n",
+        encoding="utf-8",
+    )
+    (apu / "apu.md").write_text(
+        "The APU starter generator supplies electrical power during ground operations.\n"
+        "Bleed air from the APU can support engine start and packs.\n",
+        encoding="utf-8",
+    )
+    (images / "apu_generator.yaml").write_text(
+        "id: apu_generator\n"
+        "title: APU Generator Diagram\n"
+        "caption: APU generator source diagram from the notebook.\n"
+        "file: apu_generator.svg\n"
+        "thumbnail: apu_generator_thumb.svg\n"
+        "order: 1\n",
+        encoding="utf-8",
+    )
+    (images / "apu_generator.svg").write_text(
+        '<svg xmlns="http://www.w3.org/2000/svg"><text>APU Generator Diagram</text></svg>',
+        encoding="utf-8",
+    )
+    (images / "apu_generator_thumb.svg").write_text(
+        '<svg xmlns="http://www.w3.org/2000/svg"><text>APU Generator Thumbnail</text></svg>',
+        encoding="utf-8",
+    )
+    (images / "apu_bleed_air.yaml").write_text(
+        "id: apu_bleed_air\n"
+        "title: APU Bleed Air Schematic\n"
+        "caption: APU bleed air source schematic from the notebook.\n"
+        "file: apu_bleed_air.svg\n"
+        "order: 2\n",
+        encoding="utf-8",
+    )
+    (images / "apu_bleed_air.svg").write_text(
+        '<svg xmlns="http://www.w3.org/2000/svg"><text>APU Bleed Air Schematic</text></svg>',
+        encoding="utf-8",
+    )
+    (hydraulics / "topic.yaml").write_text("title: Hydraulics\n", encoding="utf-8")
+    (hydraulics / "hydraulics.md").write_text(
+        "Hydraulic demand pumps provide pressure for flight controls.\n",
+        encoding="utf-8",
+    )
+    (electrical / "topic.yaml").write_text("title: Electrical\n", encoding="utf-8")
+    (electrical / "electrical.md").write_text(
+        "Electrical buses distribute generator power.\n",
+        encoding="utf-8",
+    )
+    return notebook_root
+
+
 def collect_events(lines: list[str]) -> list[tuple[str, dict]]:
     events: list[tuple[str, dict]] = []
     current_event: str | None = None
@@ -37,12 +107,12 @@ def collect_events(lines: list[str]) -> list[tuple[str, dict]]:
         ("what does the apu do", "search_markdown"),
     ],
 )
-def test_planner_selects_expected_mock_tool(message: str, tool_name: str) -> None:
+def test_planner_selects_expected_tool(message: str, tool_name: str) -> None:
     assert Planner().plan(message).tool_name == tool_name
 
 
-def test_default_registry_exposes_read_only_mock_tools() -> None:
-    registry = build_default_registry()
+def test_registry_exposes_read_only_file_backed_tools(tmp_path: Path) -> None:
+    registry = build_default_registry(create_notebook(tmp_path))
 
     definitions = registry.list_definitions()
     assert {definition.name for definition in definitions} == {
@@ -60,6 +130,11 @@ def test_default_registry_exposes_read_only_mock_tools() -> None:
         "apu_generator",
         "apu_bleed_air",
     ]
+    assert image_result["images"][0]["caption"] == "APU generator source diagram from the notebook."
+
+    markdown_result = registry.run("search_markdown", {"query": "starter generator"}, session_id="demo")
+    assert "starter generator supplies electrical power" in markdown_result["answer"]
+    assert markdown_result["source"].endswith("topics/apu/apu.md")
 
 
 def test_registry_rejects_missing_tools() -> None:
@@ -69,8 +144,8 @@ def test_registry_rejects_missing_tools() -> None:
         registry.run("missing_tool", {}, session_id="demo")
 
 
-def test_agent_runtime_streams_typed_image_events() -> None:
-    runtime = AgentRuntime(registry=build_default_registry(), planner=Planner())
+def test_agent_runtime_streams_typed_image_events(tmp_path: Path) -> None:
+    runtime = AgentRuntime(registry=build_default_registry(create_notebook(tmp_path)), planner=Planner())
 
     events = list(runtime.stream("show me apu images", session_id="demo"))
     event_names = [event["event"] for event in events]
@@ -90,11 +165,11 @@ def test_agent_runtime_streams_typed_image_events() -> None:
         "type": "open_image",
         "payload": {"imageId": "apu_generator"},
     }
-    assert "I found 2 mock image references" in events[6]["data"]["text"]
+    assert "I found 2 image references" in events[6]["data"]["text"]
 
 
-def test_agent_stream_endpoint_returns_sse_events() -> None:
-    client = TestClient(create_app())
+def test_agent_stream_endpoint_returns_sse_events(tmp_path: Path) -> None:
+    client = TestClient(create_app(notebook_root=create_notebook(tmp_path)))
 
     with client.stream(
         "POST",
@@ -112,11 +187,11 @@ def test_agent_stream_endpoint_returns_sse_events() -> None:
         "agent_token",
         "done",
     ]
-    assert events[3][1]["text"] == "Available mock topics: APU, Hydraulics, Electrical."
+    assert events[3][1]["text"] == "Available topics: APU, Hydraulics, Electrical."
 
 
-def test_image_endpoints_return_svg_and_unknown_images_404() -> None:
-    client = TestClient(create_app())
+def test_image_endpoints_return_notebook_svg_and_unknown_images_404(tmp_path: Path) -> None:
+    client = TestClient(create_app(notebook_root=create_notebook(tmp_path)))
 
     image_response = client.get("/api/images/apu_generator")
     thumb_response = client.get("/api/images/apu_generator/thumbnail")
